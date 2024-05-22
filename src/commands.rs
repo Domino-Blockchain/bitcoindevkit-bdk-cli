@@ -193,6 +193,12 @@ pub struct WalletOpts {
     /// Sets the descriptor to use for internal addresses.
     #[clap(name = "CHANGE_DESCRIPTOR", short = 'c', long = "change_descriptor")]
     pub change_descriptor: Option<String>,
+    /// Adds AWS KMS signer
+    #[clap(name = "AWS_KMS_ARN", short = 'a', long = "aws_kms")]
+    pub aws_kms_arn: Option<String>,
+    /// Adds Google Cloud KMS signer
+    #[clap(name = "GOOGLE_KMS_ARN", short = 'g', long = "google_kms")]
+    pub google_kms_name: Option<String>,
     #[cfg(feature = "electrum")]
     #[clap(flatten)]
     pub electrum_opts: ElectrumOpts,

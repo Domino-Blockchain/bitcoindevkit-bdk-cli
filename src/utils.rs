@@ -12,12 +12,14 @@
 
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 
 #[cfg(all(feature = "reserves", feature = "electrum"))]
 use bdk::electrum_client::{Client, ElectrumApi};
 
 #[cfg(all(feature = "reserves", feature = "electrum"))]
 use bdk::bitcoin::TxOut;
+use bdk::signer::{AwsKmsKey, SignerContext, SignerOrdering, SignerWrapper};
 
 use crate::commands::WalletOpts;
 use crate::nodes::Nodes;
@@ -52,7 +54,7 @@ use bdk::wallet::signer::{SignerError, SignerOrdering};
 use bdk::wallet::wallet_name_from_descriptor;
 #[cfg(feature = "hardware-signer")]
 use bdk::KeychainKind;
-use bdk::{Error, Wallet};
+use bdk::{Error, KeychainKind, Wallet};
 #[cfg(feature = "hardware-signer")]
 use std::sync::Arc;
 
@@ -506,7 +508,28 @@ where
 {
     let descriptor = wallet_opts.descriptor.as_str();
     let change_descriptor = wallet_opts.change_descriptor.as_deref();
-    let wallet = Wallet::new(descriptor, change_descriptor, network, database)?;
+    let mut wallet = Wallet::new(descriptor, change_descriptor, network, database)?;
+
+    if let Some(aws_kms_arn) = &wallet_opts.aws_kms_arn {
+        std::env::set_var("KEY_ARN", aws_kms_arn);
+        kms_sign::init();
+        wallet.add_signer(
+            KeychainKind::External,
+            SignerOrdering(200),
+            Arc::new(SignerWrapper::new(AwsKmsKey {}, SignerContext::Segwitv0)),
+        );
+        log::info!("Added AwsKmsKey as a signer to the wallet.");
+    }
+    if let Some(google_kms_name) = &wallet_opts.google_kms_name {
+        std::env::set_var("KEY_NAME", google_kms_name);
+        kms_sign::init();
+        wallet.add_signer(
+            KeychainKind::External,
+            SignerOrdering(200),
+            Arc::new(SignerWrapper::new(AwsKmsKey {}, SignerContext::Segwitv0)),
+        );
+        log::info!("Added AwsKmsKey as a signer to the wallet.");
+    }
 
     #[cfg(feature = "hardware-signer")]
     let wallet = add_hardware_signers(wallet, network)?;
